@@ -437,12 +437,28 @@ void fetch_and_hash_tx_data(dispatcher_context_t* dc,
  * @param n_chunks Number of chunks in the Merkle tree.
  * @param keccak_of_tx_data Pointer to the Keccak hash of the transaction data.
  * @param output_buffer Pointer to the buffer where the encoded transaction fields will be stored.
+ * @param output_buffer_size Size of the output buffer (must be at least FIELD_SIZE * 11 bytes).
+ *
+ * @return true if successful, false if buffer size is insufficient
  */
-void fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
+bool fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
                                     uint8_t* data_merkle_root,
                                     size_t n_chunks,
                                     uint8_t* keccak_of_tx_data,
-                                    uint8_t* output_buffer) {
+                                    uint8_t* output_buffer,
+                                    size_t output_buffer_size) {
+    if (dc == NULL || data_merkle_root == NULL || output_buffer == NULL) {
+        SAFE_SEND_SW(dc, SW_BAD_STATE);
+        return false;
+    }
+
+    // Check if output buffer is large enough
+    const size_t required_size = FIELD_SIZE * 11;
+    if (output_buffer_size < required_size) {
+        SAFE_SEND_SW(dc, SW_WRONG_DATA_LENGTH);
+        return false;
+    }
+
     size_t offset = 0;
 
     // Copy 'SafeTxTypeHash' field into output_buffer
@@ -484,6 +500,8 @@ void fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
     offset += FIELD_SIZE;
     // Fetch '_nonce' field, add leading zeroes and add to output_buffer
     fetch_and_add_chunk_to_buffer(dc, data_merkle_root, n_chunks, 3, 0, 32, output_buffer, offset);
+
+    return true;
 }
 
 /**
@@ -513,13 +531,18 @@ void compute_tx_hash(dispatcher_context_t* dc,
     u_int8_t keccak_of_tx_data[KECCAK_256_HASH_SIZE];
     // Compute keccak256 hash of the tx_data_data
     fetch_and_hash_tx_data(dc, data_merkle_root, n_chunks, &hash_context, keccak_of_tx_data);
+
     // Fetch and ABI-encode the tx fields
     u_int8_t abi_encoded_tx_fields[FIELD_SIZE * 11];
-    fetch_and_abi_encode_tx_fields(dc,
-                                   data_merkle_root,
-                                   n_chunks,
-                                   keccak_of_tx_data,
-                                   abi_encoded_tx_fields);
+    if (!fetch_and_abi_encode_tx_fields(dc,
+                                        data_merkle_root,
+                                        n_chunks,
+                                        keccak_of_tx_data,
+                                        abi_encoded_tx_fields,
+                                        sizeof(abi_encoded_tx_fields))) {
+        return;  // Error already handled in the function
+    }
+
     // Hash the abi_encoded_tx_fields
     u_int8_t keccak_of_abi_encoded_tx_fields[KECCAK_256_HASH_SIZE];
     CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));

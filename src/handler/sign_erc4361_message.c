@@ -33,12 +33,23 @@ typedef struct {
     size_t max_length;
 } ERC4361Field;
 
-static size_t parse_field(const uint8_t *buffer,
-                          size_t buffer_len,
-                          char *output,
-                          size_t max_length) {
+static int parse_field(const uint8_t *buffer, size_t buffer_len, char *output, size_t max_length) {
+    // Add NULL check
+    if (buffer == NULL || output == NULL) {
+        return -1;
+    }
+
+    // Check buffer_len to prevent buffer overflow
+    if (buffer_len == 0 || max_length == 0) {
+        return -1;
+    }
+
     size_t field_length = 0;
-    while (field_length < buffer_len && field_length < max_length - 1) {
+    // Ensure we don't exceed buffer_len or max_length-1 (for null terminator)
+    const size_t max_field_length = (buffer_len < max_length - 1) ? buffer_len : max_length - 1;
+
+    while (field_length < max_field_length) {
+        // Safe to dereference buffer here as we've checked both pointer and bounds
         if (buffer[field_length] == '\n' || buffer[field_length] == '\0' ||
             buffer[field_length] == ' ') {
             break;
@@ -46,10 +57,11 @@ static size_t parse_field(const uint8_t *buffer,
         field_length++;
     }
 
+    // Safe to use memcpy as we've validated both source and destination
     memcpy(output, buffer, field_length);
     output[field_length] = '\0';
 
-    return field_length;
+    return (int) field_length;  // Safe cast as field_length is bounded by max_field_length
 }
 
 static bool has_newline(const char *buffer, size_t length) {
@@ -62,6 +74,12 @@ static bool has_newline(const char *buffer, size_t length) {
 }
 
 void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_version) {
+    // Add NULL check with status word
+    if (dc == NULL) {
+        SAFE_SEND_SW(dc, SW_BAD_STATE);
+        return;
+    }
+
     (void) protocol_version;
 
     uint8_t bip32_path_len;
@@ -172,15 +190,23 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
         }
 
         if (current_line == 0) {
-            size_t domain_length =
+            int domain_length =
                 parse_field(parsing_buffer, parsing_buffer_len, domain, MAX_DOMAIN_LENGTH);
+            if (domain_length < 0) {
+                SAFE_SEND_SW(dc, SW_BAD_STATE);
+                return;
+            }
             total_bytes_read += domain_length;
             PRINTF("Domain: %s\n", domain);
         }
 
         if (current_line == 1) {
-            size_t address_length =
+            int address_length =
                 parse_field(parsing_buffer, parsing_buffer_len, address, MAX_ADDRESS_LENGTH_STR);
+            if (address_length < 0) {
+                SAFE_SEND_SW(dc, SW_BAD_STATE);
+                return;
+            }
             total_bytes_read += address_length;
             PRINTF("Address: %s\n", address);
         }
@@ -191,10 +217,14 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
                 ERC4361Field *field = &fields[i];
                 if (parsing_buffer_len >= field->name_length &&
                     memcmp(parsing_buffer, field->name, field->name_length) == 0) {
-                    size_t field_length = parse_field(parsing_buffer + field->name_length,
-                                                      parsing_buffer_len - field->name_length,
-                                                      field->output,
-                                                      field->max_length);
+                    int field_length = parse_field(parsing_buffer + field->name_length,
+                                                   parsing_buffer_len - field->name_length,
+                                                   field->output,
+                                                   field->max_length);
+                    if (field_length < 0) {
+                        SAFE_SEND_SW(dc, SW_BAD_STATE);
+                        return;
+                    }
                     total_bytes_read += field_length + field->name_length;
                     PRINTF("%s%s\n", field->name, field->output);
                     break;
@@ -247,9 +277,7 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
                                               issued_at,
                                               expiration_time)) {
         SAFE_SEND_SW(dc, SW_DENY);
-        if (!ui_post_processing_confirm_message(dc, false)) {
-            PRINTF("Error in ui_post_processing_confirm_message");
-        }
+        ui_post_processing_confirm_message(dc, false);
         return;
     }
 #endif
@@ -265,9 +293,7 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
     if (sig_len < 0) {
         // unexpected error when signing
         SAFE_SEND_SW(dc, SW_BAD_STATE);
-        if (!ui_post_processing_confirm_message(dc, false)) {
-            PRINTF("Error in ui_post_processing_confirm_message");
-        }
+        ui_post_processing_confirm_message(dc, false);
         return;
     }
 
@@ -277,15 +303,19 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
         uint8_t result[65];
         memset(result, 0, sizeof(result));
 
+        // Verify r_length won't cause buffer overflow
+        if (sig[3] > MAX_DER_SIG_LEN - 5) {  // -5 accounts for DER header and s_length byte
+            SAFE_SEND_SW(dc, SW_BAD_STATE);
+            ui_post_processing_confirm_message(dc, false);
+            return;
+        }
         // # Format signature into standard bitcoin format
         int r_length = sig[3];
         int s_length = sig[4 + r_length + 1];
 
         if (r_length > 33 || s_length > 33) {
             SAFE_SEND_SW(dc, SW_BAD_STATE);  // can never happen
-            if (!ui_post_processing_confirm_message(dc, false)) {
-                PRINTF("Error in ui_post_processing_confirm_message");
-            }
+            ui_post_processing_confirm_message(dc, false);
             return;
         }
 
@@ -301,9 +331,7 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
         result[0] = 27 + 4 + ((info & CX_ECCINFO_PARITY_ODD) ? 1 : 0);
 
         SEND_RESPONSE(dc, result, sizeof(result), SW_OK);
-        if (!ui_post_processing_confirm_message(dc, true)) {
-            PRINTF("Error in ui_post_processing_confirm_message");
-        }
+        ui_post_processing_confirm_message(dc, true);
         return;
     }
 }

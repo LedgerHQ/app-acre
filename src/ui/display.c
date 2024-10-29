@@ -184,6 +184,12 @@ bool ui_validate_erc4361_data_and_confirm(dispatcher_context_t *context,
     return true;
 #endif
 
+    // Add NULL checks for context and required fields
+    if (context == NULL || domain == NULL || address == NULL || uri == NULL || version == NULL ||
+        nonce == NULL || issued_at == NULL || expiration_time == NULL) {
+        return false;
+    }
+
     ui_validate_erc4361_state_t *state = (ui_validate_erc4361_state_t *) &g_ui_state;
     // copy the erc4361 data to the state
     strncpy(state->domain, domain, sizeof(state->domain));
