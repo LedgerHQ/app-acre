@@ -293,7 +293,7 @@ UX_STEP_NOCB(ux_display_erc4361_step,
              {
                  &C_icon_certificate,
                  "Sign In",
-                 "message",
+                 "",
              });
 
 UX_STEP_NOCB(ux_display_erc4361_domain_step,
