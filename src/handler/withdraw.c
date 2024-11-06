@@ -266,6 +266,10 @@ void add_leading_zeroes(uint8_t* dest_buffer,
         PRINTF("Error: Null buffer\n");
         return;
     }
+    if (dest_size < src_size) {
+        PRINTF("Error: Destination buffer is too small\n");
+        return;
+    }
     // Clear the destination buffer
     memset(dest_buffer, 0, dest_size);
 
