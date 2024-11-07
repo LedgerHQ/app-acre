@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "printf.h"
+#include "debug.h"
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 

@@ -183,12 +183,18 @@ static bool display_data_content_and_confirm(dispatcher_context_t* dc,
     snprintf(value_with_ticker, sizeof(value_with_ticker), "stBTC %s", value);
 
     // Trim the value of trailing zeros in a char of size of value
-    int i = sizeof(value_with_ticker) - 1;
+    int value_with_ticker_len = sizeof(value_with_ticker) - 1;
+    int i = value_with_ticker_len;
     while (value_with_ticker[i] == '0' || value_with_ticker[i] == '\0' ||
            value_with_ticker[i] == '.') {
+        if (i == 0) {
+            break;
+        }
         i--;
     }
-    value_with_ticker[i + 1] = '\0';
+    if (i < value_with_ticker_len) {
+        value_with_ticker[i + 1] = '\0';
+    }
     // Get the second chunk that contains the data to display
     call_get_merkle_leaf_element(dc,
                                  data_merkle_root,
@@ -262,6 +268,10 @@ void add_leading_zeroes(uint8_t* dest_buffer,
                         size_t src_size) {
     if (dest_buffer == NULL || src_buffer == NULL) {
         PRINTF("Error: Null buffer\n");
+        return;
+    }
+    if (dest_size < src_size) {
+        PRINTF("Error: Destination buffer is too small\n");
         return;
     }
     // Clear the destination buffer

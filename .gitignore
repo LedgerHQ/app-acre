@@ -38,3 +38,5 @@ doc/latex
 
 tests/snapshots-tmp
 tests/bitcoin
+
+.DS_Store

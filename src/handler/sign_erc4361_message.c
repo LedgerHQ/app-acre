@@ -311,9 +311,14 @@ void handler_sign_erc4361_message(dispatcher_context_t *dc, uint8_t protocol_ver
         }
         // # Format signature into standard bitcoin format
         int r_length = sig[3];
-        int s_length = sig[4 + r_length + 1];
+        if (r_length < 0 || r_length > 33) {
+            SAFE_SEND_SW(dc, SW_BAD_STATE);  // can never happen
+            ui_post_processing_confirm_message(dc, false);
+            return;
+        }
 
-        if (r_length > 33 || s_length > 33) {
+        int s_length = sig[4 + r_length + 1];
+        if (s_length < 0 || s_length > 33) {
             SAFE_SEND_SW(dc, SW_BAD_STATE);  // can never happen
             ui_post_processing_confirm_message(dc, false);
             return;
