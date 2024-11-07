@@ -163,7 +163,8 @@ DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
 # DEFINES   += HAVE_PRINT_STACK_POINTER
 
-DEBUG = 0 # 0 for production, 1 for debug
+# 0 for production, 1 for debug
+DEBUG = 1
 ifeq ($(DEBUG),10)
     $(warning Using semihosted PRINTF. Only run with speculos!)
     DEFINES   += HAVE_PRINTF HAVE_SEMIHOSTED_PRINTF PRINTF=semihosted_printf
