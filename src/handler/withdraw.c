@@ -188,7 +188,7 @@ static bool display_data_content_and_confirm(dispatcher_context_t* dc,
            value_with_ticker[i] == '.') {
         i--;
     }
-    if (i >= 0) {
+    if (i >= 0 && i < sizeof(value_with_ticker)) {
         value_with_ticker[i + 1] = '\0';
     }
     // Get the second chunk that contains the data to display
