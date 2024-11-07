@@ -158,6 +158,8 @@ DEFINES   += HAVE_BOLOS_APP_STACK_CANARY
 
 DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
+# debugging helper functions and macros
+CFLAGS    += -include debug-helpers/debug.h
 
 # DEFINES   += HAVE_PRINT_STACK_POINTER
 
@@ -168,8 +170,7 @@ ifeq ($(DEBUG),10)
 endif
 
 ifeq ($(DEBUG),1)
-    # debugging helper functions and macros
-    CFLAGS    += -include debug-helpers/debug.h -g
+    CFLAGS    += -g
 endif
 # Needed to be able to include the definition of G_cx
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
