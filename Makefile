@@ -39,7 +39,9 @@ include $(BOLOS_SDK)/Makefile.defines
 CURVE_APP_LOAD_PARAMS = secp256k1
 
 # Application allowed derivation paths.
-PATH_APP_LOAD_PARAMS = "44'/0'" "44'/1'" "48'/0'" "48'/1'" "49'/0'" "49'/1'" "84'/0'" "84'/1'" "86'/0'" "86'/1'"
+PATH_APP_LOAD_PARAMS = ""
+# Specific paths below are not supported for fingerprinting methods on real devices, supported by speculos
+# PATH_APP_LOAD_PARAMS = "0'/0'" "0'/1'" "44'/0'" "44'/1'" "48'/0'" "48'/1'" "49'/0'" "49'/1'" "84'/0'" "84'/1'" "86'/0'" "86'/1'"
 
 
 # Application version
