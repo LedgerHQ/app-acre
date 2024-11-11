@@ -6,8 +6,8 @@
     "editor.formatOnSave": true,
     "ledgerDevTools.appSettings": {
         "selectedUseCase": "release",
-        "selectedDevice": "Nano S Plus",
-        "selectedVariant": "acre_testnet"
+        "selectedDevice": "Stax",
+        "selectedVariant": "acre"
     },
     "makefile.configureOnOpen": false
 }
