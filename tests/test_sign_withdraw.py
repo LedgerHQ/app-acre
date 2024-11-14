@@ -9,7 +9,7 @@ from ragger_bitcoin import RaggerClient
 from ledger_bitcoin.withdraw import AcreWithdrawalData
 from .instructions import withdrawal_instruction_approve, withdrawal_instruction_reject
 
-
+#
 def test_sign_withdraw(navigator: Navigator, firmware: Firmware, client: RaggerClient, test_name: str):
     data = AcreWithdrawalData(
         to= "0xc14972DC5a4443E4f5e89E3655BE48Ee95A795aB",
@@ -22,12 +22,12 @@ def test_sign_withdraw(navigator: Navigator, firmware: Firmware, client: RaggerC
         gasToken= "0x0000000000000000000000000000000000000000",
         refundReceiver= "0x0000000000000000000000000000000000000000",
         nonce= "0x8",
-    )
+    ) # tx_hash: 0xed3a7a50496ccca6173ddd9a1ad786d61ea737b70541887ab2c2fadcbe36eeaf
     path = "m/44'/0'/0'/0/0"
     result = client.sign_withdraw(data, path, navigator,
                                  instructions=withdrawal_instruction_approve(firmware),
                                  testname=test_name)
-    assert result == "H7C63V1KXzqImWjq6Bwy64m1cmdue4lFHEcdo9D4iHOKcKa9ddY7aTeCdq0n/31djYwv486DzZaHaOgtDuNuwZc="
+    assert result == "IEZDsLh2JweulEOzl2dgLrYvtIqWUW8gFeYdMLAYSk7PeH72uN0JQJGVCYZSpJ5HYRaKZrmSBiG3Ypl+oelXEAM="
 
 def test_sign_withdraw_wrong_address(navigator: Navigator, firmware: Firmware, client: RaggerClient, test_name: str):
     data = AcreWithdrawalData(

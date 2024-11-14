@@ -60,17 +60,21 @@ static unsigned char const BSM_SIGN_MAGIC[] = {'\x18', 'B', 'i', 't', 'c', 'o', 
 #error "COIN_VARIANT is not defined"
 #elif COIN_VARIANT == COIN_VARIANT_ACRE
 // Mainnet hash
-static const uint8_t domain_separator_hash[32] = {
-    0xc4, 0x86, 0x40, 0x56, 0xe2, 0x10, 0x22, 0x91, 0x3a, 0x49, 0x88, 0x4b, 0xa9, 0xfb, 0x40, 0x35,
-    0x36, 0x4d, 0x5c, 0x2a, 0xb8, 0xb4, 0x0f, 0x03, 0x05, 0x58, 0x3a, 0xe4, 0x19, 0xc7, 0x2f, 0x86};
+static const uint8_t abi_encoded_chain_id[32] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 #elif COIN_VARIANT == COIN_VARIANT_ACRE_TESTNET
 // Testnet hash
-static const uint8_t domain_separator_hash[32] = {
-    0x19, 0x2e, 0xfd, 0x34, 0x00, 0xda, 0x07, 0xca, 0xf5, 0xbd, 0x41, 0x8f, 0xdd, 0xfc, 0x07, 0x7a,
-    0x97, 0x88, 0x1b, 0x26, 0xb7, 0xca, 0x63, 0x8d, 0xda, 0x2d, 0x52, 0x3f, 0xde, 0xf4, 0xf8, 0x4c};
+static const uint8_t abi_encoded_chain_id[32] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x05, 0x77};
 #else
 #error "Unsupported COIN_VARIANT value"
 #endif
+
+static const uint8_t domain_separator_typehash[32] = {
+    0x47, 0xe7, 0x95, 0x34, 0xa2, 0x45, 0x95, 0x2e, 0x8b, 0x16, 0x89, 0x3a, 0x33, 0x6b, 0x85, 0xa3,
+    0xd9, 0xea, 0x9f, 0xa8, 0xc5, 0x73, 0xf3, 0xd8, 0x03, 0xaf, 0xb9, 0x2a, 0x79, 0x46, 0x92, 0x18};
 
 static const uint8_t safe_tx_typehash[32] = {
     0xbb, 0x83, 0x10, 0xd4, 0x86, 0x36, 0x8d, 0xb6, 0xbd, 0x6f, 0x84, 0x94, 0x02, 0xfd, 0xd7, 0x3a,
@@ -427,11 +431,11 @@ void fetch_and_hash_tx_data(dispatcher_context_t* dc,
     }
     // Finalize the hash and store the result in output_hash
     CX_THROW(cx_hash_no_throw((cx_hash_t*) hash_context,
-                              CX_LAST,        // final block mode
-                              NULL,           // no more input
-                              0,              // no more input length
-                              output_buffer,  // output hash buffer
-                              32));           // output hash length (32 bytes)
+                              CX_LAST,                 // final block mode
+                              NULL,                    // no more input
+                              0,                       // no more input length
+                              output_buffer,           // output hash buffer
+                              KECCAK_256_HASH_SIZE));  // output hash length (32 bytes)
 }
 
 /**
@@ -515,6 +519,55 @@ bool fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
 }
 
 /**
+ * @brief Computes the domain separator hash according to EIP-712 specification.
+ *
+ * This function computes the domain separator hash by combining and hashing:
+ * 1. The ABI-encoded EIP-712 domain separator typehash
+ * 2. The ABI-encoded chain ID
+ * 3. The ABI-encoded verifying contract address
+ *
+ * The function follows the EIP-712 specification for structured data hashing
+ * and signing. The computed hash is used as part of the transaction signing
+ * process.
+ *
+ * @param dc Pointer to the dispatcher context used for operations
+ * @param data_merkle_root Pointer to the Merkle root of the transaction data
+ * @param n_chunks Number of chunks in the Merkle tree
+ * @param output_buffer Buffer to store the computed domain separator hash (32 bytes)
+ */
+void compute_domain_separator_hash(dispatcher_context_t* dc,
+                                   uint8_t* data_merkle_root,
+                                   size_t n_chunks,
+                                   uint8_t* output_buffer) {
+    cx_sha3_t hash_context;
+    CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));
+    // Add the EIP712 domain separator typehash to the hash context (it is already abi-encoded)
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              0,
+                              domain_separator_typehash,
+                              sizeof(domain_separator_typehash),
+                              NULL,
+                              0));
+
+    // add the abi encoded chainId to the hash context
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              0,
+                              abi_encoded_chain_id,
+                              sizeof(abi_encoded_chain_id),
+                              NULL,
+                              0));
+    // Add the verifying contract address to the hash context (it is already abi-encoded)
+    fetch_and_add_chunk_to_hash(dc, data_merkle_root, n_chunks, &hash_context, 7, 0, 32);
+    // Compute the final hash
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              CX_LAST,
+                              NULL,
+                              0,
+                              output_buffer,
+                              KECCAK_256_HASH_SIZE));
+}
+
+/**
  * @brief Computes the transaction hash using Keccak-256.
  *
  * This function performs the following steps:
@@ -562,7 +615,9 @@ void compute_tx_hash(dispatcher_context_t* dc,
                               sizeof(abi_encoded_tx_fields),
                               keccak_of_abi_encoded_tx_fields,
                               sizeof(keccak_of_abi_encoded_tx_fields)));
-
+    // Compute domain_separator_hash
+    uint8_t domain_separator_hash[KECCAK_256_HASH_SIZE];
+    compute_domain_separator_hash(dc, data_merkle_root, n_chunks, domain_separator_hash);
     // Abi.encodePacked
     // 2 bytes (0x1901) + 2 keccak256 hashes
     u_int8_t abi_encode_packed[2 + (KECCAK_256_HASH_SIZE * 2)] = {0x19, 0x01};

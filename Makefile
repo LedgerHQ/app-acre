@@ -47,7 +47,7 @@ PATH_APP_LOAD_PARAMS = ""
 # Application version
 APPVERSION_M = 1
 APPVERSION_N = 1
-APPVERSION_P = 3
+APPVERSION_P = 4
 APPVERSION_SUFFIX = # if not empty, appended at the end. Do not add a dash.
 
 ifeq ($(APPVERSION_SUFFIX),)
@@ -163,7 +163,8 @@ DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
 # DEFINES   += HAVE_PRINT_STACK_POINTER
 
-DEBUG = 0 # 0 for production, 1 for debug
+# 0 for production, 1 for debug
+DEBUG = 0
 ifeq ($(DEBUG),10)
     $(warning Using semihosted PRINTF. Only run with speculos!)
     DEFINES   += HAVE_PRINTF HAVE_SEMIHOSTED_PRINTF PRINTF=semihosted_printf
