@@ -540,7 +540,7 @@ void ui_display_erc4361_content_flow(void) {
     nbgl_useCaseReview(TYPE_MESSAGE,
                        &pairList,
                        &C_Acre_64px,
-                       "Review ERC4361 message",
+                       "Review Sign In",
                        NULL,
                        "Approve\nMessage ",
                        start_transaction_callback);

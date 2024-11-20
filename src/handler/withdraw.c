@@ -60,17 +60,21 @@ static unsigned char const BSM_SIGN_MAGIC[] = {'\x18', 'B', 'i', 't', 'c', 'o', 
 #error "COIN_VARIANT is not defined"
 #elif COIN_VARIANT == COIN_VARIANT_ACRE
 // Mainnet hash
-static const uint8_t domain_separator_hash[32] = {
-    0xc4, 0x86, 0x40, 0x56, 0xe2, 0x10, 0x22, 0x91, 0x3a, 0x49, 0x88, 0x4b, 0xa9, 0xfb, 0x40, 0x35,
-    0x36, 0x4d, 0x5c, 0x2a, 0xb8, 0xb4, 0x0f, 0x03, 0x05, 0x58, 0x3a, 0xe4, 0x19, 0xc7, 0x2f, 0x86};
+static const uint8_t abi_encoded_chain_id[32] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 #elif COIN_VARIANT == COIN_VARIANT_ACRE_TESTNET
 // Testnet hash
-static const uint8_t domain_separator_hash[32] = {
-    0x19, 0x2e, 0xfd, 0x34, 0x00, 0xda, 0x07, 0xca, 0xf5, 0xbd, 0x41, 0x8f, 0xdd, 0xfc, 0x07, 0x7a,
-    0x97, 0x88, 0x1b, 0x26, 0xb7, 0xca, 0x63, 0x8d, 0xda, 0x2d, 0x52, 0x3f, 0xde, 0xf4, 0xf8, 0x4c};
+static const uint8_t abi_encoded_chain_id[32] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x05, 0x77};
 #else
 #error "Unsupported COIN_VARIANT value"
 #endif
+
+static const uint8_t domain_separator_typehash[32] = {
+    0x47, 0xe7, 0x95, 0x34, 0xa2, 0x45, 0x95, 0x2e, 0x8b, 0x16, 0x89, 0x3a, 0x33, 0x6b, 0x85, 0xa3,
+    0xd9, 0xea, 0x9f, 0xa8, 0xc5, 0x73, 0xf3, 0xd8, 0x03, 0xaf, 0xb9, 0x2a, 0x79, 0x46, 0x92, 0x18};
 
 static const uint8_t safe_tx_typehash[32] = {
     0xbb, 0x83, 0x10, 0xd4, 0x86, 0x36, 0x8d, 0xb6, 0xbd, 0x6f, 0x84, 0x94, 0x02, 0xfd, 0xd7, 0x3a,
@@ -183,12 +187,18 @@ static bool display_data_content_and_confirm(dispatcher_context_t* dc,
     snprintf(value_with_ticker, sizeof(value_with_ticker), "stBTC %s", value);
 
     // Trim the value of trailing zeros in a char of size of value
-    int i = sizeof(value_with_ticker) - 1;
+    int value_with_ticker_len = sizeof(value_with_ticker) - 1;
+    int i = value_with_ticker_len;
     while (value_with_ticker[i] == '0' || value_with_ticker[i] == '\0' ||
            value_with_ticker[i] == '.') {
+        if (i == 0) {
+            break;
+        }
         i--;
     }
-    value_with_ticker[i + 1] = '\0';
+    if (i < value_with_ticker_len) {
+        value_with_ticker[i + 1] = '\0';
+    }
     // Get the second chunk that contains the data to display
     call_get_merkle_leaf_element(dc,
                                  data_merkle_root,
@@ -262,6 +272,10 @@ void add_leading_zeroes(uint8_t* dest_buffer,
                         size_t src_size) {
     if (dest_buffer == NULL || src_buffer == NULL) {
         PRINTF("Error: Null buffer\n");
+        return;
+    }
+    if (dest_size < src_size) {
+        PRINTF("Error: Destination buffer is too small\n");
         return;
     }
     // Clear the destination buffer
@@ -417,11 +431,11 @@ void fetch_and_hash_tx_data(dispatcher_context_t* dc,
     }
     // Finalize the hash and store the result in output_hash
     CX_THROW(cx_hash_no_throw((cx_hash_t*) hash_context,
-                              CX_LAST,        // final block mode
-                              NULL,           // no more input
-                              0,              // no more input length
-                              output_buffer,  // output hash buffer
-                              32));           // output hash length (32 bytes)
+                              CX_LAST,                 // final block mode
+                              NULL,                    // no more input
+                              0,                       // no more input length
+                              output_buffer,           // output hash buffer
+                              KECCAK_256_HASH_SIZE));  // output hash length (32 bytes)
 }
 
 /**
@@ -437,12 +451,28 @@ void fetch_and_hash_tx_data(dispatcher_context_t* dc,
  * @param n_chunks Number of chunks in the Merkle tree.
  * @param keccak_of_tx_data Pointer to the Keccak hash of the transaction data.
  * @param output_buffer Pointer to the buffer where the encoded transaction fields will be stored.
+ * @param output_buffer_size Size of the output buffer (must be at least FIELD_SIZE * 11 bytes).
+ *
+ * @return true if successful, false if buffer size is insufficient
  */
-void fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
+bool fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
                                     uint8_t* data_merkle_root,
                                     size_t n_chunks,
                                     uint8_t* keccak_of_tx_data,
-                                    uint8_t* output_buffer) {
+                                    uint8_t* output_buffer,
+                                    size_t output_buffer_size) {
+    if (dc == NULL || data_merkle_root == NULL || output_buffer == NULL) {
+        SAFE_SEND_SW(dc, SW_BAD_STATE);
+        return false;
+    }
+
+    // Check if output buffer is large enough
+    const size_t required_size = FIELD_SIZE * 11;
+    if (output_buffer_size < required_size) {
+        SAFE_SEND_SW(dc, SW_WRONG_DATA_LENGTH);
+        return false;
+    }
+
     size_t offset = 0;
 
     // Copy 'SafeTxTypeHash' field into output_buffer
@@ -484,6 +514,57 @@ void fetch_and_abi_encode_tx_fields(dispatcher_context_t* dc,
     offset += FIELD_SIZE;
     // Fetch '_nonce' field, add leading zeroes and add to output_buffer
     fetch_and_add_chunk_to_buffer(dc, data_merkle_root, n_chunks, 3, 0, 32, output_buffer, offset);
+
+    return true;
+}
+
+/**
+ * @brief Computes the domain separator hash according to EIP-712 specification.
+ *
+ * This function computes the domain separator hash by combining and hashing:
+ * 1. The ABI-encoded EIP-712 domain separator typehash
+ * 2. The ABI-encoded chain ID
+ * 3. The ABI-encoded verifying contract address
+ *
+ * The function follows the EIP-712 specification for structured data hashing
+ * and signing. The computed hash is used as part of the transaction signing
+ * process.
+ *
+ * @param dc Pointer to the dispatcher context used for operations
+ * @param data_merkle_root Pointer to the Merkle root of the transaction data
+ * @param n_chunks Number of chunks in the Merkle tree
+ * @param output_buffer Buffer to store the computed domain separator hash (32 bytes)
+ */
+void compute_domain_separator_hash(dispatcher_context_t* dc,
+                                   uint8_t* data_merkle_root,
+                                   size_t n_chunks,
+                                   uint8_t* output_buffer) {
+    cx_sha3_t hash_context;
+    CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));
+    // Add the EIP712 domain separator typehash to the hash context (it is already abi-encoded)
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              0,
+                              domain_separator_typehash,
+                              sizeof(domain_separator_typehash),
+                              NULL,
+                              0));
+
+    // add the abi encoded chainId to the hash context
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              0,
+                              abi_encoded_chain_id,
+                              sizeof(abi_encoded_chain_id),
+                              NULL,
+                              0));
+    // Add the verifying contract address to the hash context (it is already abi-encoded)
+    fetch_and_add_chunk_to_hash(dc, data_merkle_root, n_chunks, &hash_context, 7, 0, 32);
+    // Compute the final hash
+    CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
+                              CX_LAST,
+                              NULL,
+                              0,
+                              output_buffer,
+                              KECCAK_256_HASH_SIZE));
 }
 
 /**
@@ -513,13 +594,18 @@ void compute_tx_hash(dispatcher_context_t* dc,
     u_int8_t keccak_of_tx_data[KECCAK_256_HASH_SIZE];
     // Compute keccak256 hash of the tx_data_data
     fetch_and_hash_tx_data(dc, data_merkle_root, n_chunks, &hash_context, keccak_of_tx_data);
+
     // Fetch and ABI-encode the tx fields
     u_int8_t abi_encoded_tx_fields[FIELD_SIZE * 11];
-    fetch_and_abi_encode_tx_fields(dc,
-                                   data_merkle_root,
-                                   n_chunks,
-                                   keccak_of_tx_data,
-                                   abi_encoded_tx_fields);
+    if (!fetch_and_abi_encode_tx_fields(dc,
+                                        data_merkle_root,
+                                        n_chunks,
+                                        keccak_of_tx_data,
+                                        abi_encoded_tx_fields,
+                                        sizeof(abi_encoded_tx_fields))) {
+        return;  // Error already handled in the function
+    }
+
     // Hash the abi_encoded_tx_fields
     u_int8_t keccak_of_abi_encoded_tx_fields[KECCAK_256_HASH_SIZE];
     CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));
@@ -529,7 +615,9 @@ void compute_tx_hash(dispatcher_context_t* dc,
                               sizeof(abi_encoded_tx_fields),
                               keccak_of_abi_encoded_tx_fields,
                               sizeof(keccak_of_abi_encoded_tx_fields)));
-
+    // Compute domain_separator_hash
+    uint8_t domain_separator_hash[KECCAK_256_HASH_SIZE];
+    compute_domain_separator_hash(dc, data_merkle_root, n_chunks, domain_separator_hash);
     // Abi.encodePacked
     // 2 bytes (0x1901) + 2 keccak256 hashes
     u_int8_t abi_encode_packed[2 + (KECCAK_256_HASH_SIZE * 2)] = {0x19, 0x01};

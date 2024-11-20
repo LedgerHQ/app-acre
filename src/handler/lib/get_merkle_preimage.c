@@ -63,7 +63,11 @@ int call_get_merkle_preimage(dispatcher_context_t *dispatcher_context,
     cx_sha256_init(&hash_context);
 
     // update hash
-    crypto_hash_update(&hash_context.header, data_ptr, partial_data_len);
+    int ret = cx_hash_no_throw(&hash_context.header, 0, data_ptr, partial_data_len, NULL, 0);
+    if (ret != 0) {
+        PRINTF("Error updating hash\n");
+        return -11;
+    }
 
     buffer_t out_buffer = buffer_create(out_ptr, out_ptr_len);
 
@@ -98,10 +102,17 @@ int call_get_merkle_preimage(dispatcher_context_t *dispatcher_context,
         }
 
         // update hash
-        crypto_hash_update(
+        ret = cx_hash_no_throw(
             &hash_context.header,
+            0,
             dispatcher_context->read_buffer.ptr + dispatcher_context->read_buffer.offset,
-            n_bytes);
+            n_bytes,
+            NULL,
+            0);
+        if (ret != 0) {
+            PRINTF("Error updating hash\n");
+            return -12;
+        }
 
         // write bytes to output
         buffer_write_bytes(&out_buffer, data_ptr, n_bytes);

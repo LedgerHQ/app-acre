@@ -292,8 +292,8 @@ UX_STEP_NOCB(ux_display_erc4361_step,
              pnn,
              {
                  &C_icon_certificate,
-                 "Sign ERC-4361",
-                 "message",
+                 "Sign In",
+                 "",
              });
 
 UX_STEP_NOCB(ux_display_erc4361_domain_step,

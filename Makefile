@@ -39,13 +39,15 @@ include $(BOLOS_SDK)/Makefile.defines
 CURVE_APP_LOAD_PARAMS = secp256k1
 
 # Application allowed derivation paths.
-PATH_APP_LOAD_PARAMS = "44'/0'" "44'/1'" "48'/0'" "48'/1'" "49'/0'" "49'/1'" "84'/0'" "84'/1'" "86'/0'" "86'/1'"
+PATH_APP_LOAD_PARAMS = ""
+# Specific paths below are not supported for fingerprinting methods on real devices, supported by speculos
+# PATH_APP_LOAD_PARAMS = "0'/0'" "0'/1'" "44'/0'" "44'/1'" "48'/0'" "48'/1'" "49'/0'" "49'/1'" "84'/0'" "84'/1'" "86'/0'" "86'/1'"
 
 
 # Application version
 APPVERSION_M = 1
 APPVERSION_N = 1
-APPVERSION_P = 0
+APPVERSION_P = 4
 APPVERSION_SUFFIX = # if not empty, appended at the end. Do not add a dash.
 
 ifeq ($(APPVERSION_SUFFIX),)
@@ -158,17 +160,20 @@ DEFINES   += HAVE_BOLOS_APP_STACK_CANARY
 
 DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
-# debugging helper functions and macros
-CFLAGS    += -g -include debug-helpers/debug.h
 
 # DEFINES   += HAVE_PRINT_STACK_POINTER
 
-DEBUG = 0 # 0 for production, 1 for debug
+# 0 for production, 1 for debug
+DEBUG = 0
 ifeq ($(DEBUG),10)
     $(warning Using semihosted PRINTF. Only run with speculos!)
     DEFINES   += HAVE_PRINTF HAVE_SEMIHOSTED_PRINTF PRINTF=semihosted_printf
 endif
 
+ifeq ($(DEBUG),1)
+    # debugging helper functions and macros
+    CFLAGS    += -include debug-helpers/debug.h -g
+endif
 # Needed to be able to include the definition of G_cx
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
