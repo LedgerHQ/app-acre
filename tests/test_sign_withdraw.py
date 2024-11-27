@@ -22,12 +22,12 @@ def test_sign_withdraw(navigator: Navigator, firmware: Firmware, client: RaggerC
         gasToken= "0x0000000000000000000000000000000000000000",
         refundReceiver= "0x0000000000000000000000000000000000000000",
         nonce= "0x8",
-    ) # tx_hash: 0xed3a7a50496ccca6173ddd9a1ad786d61ea737b70541887ab2c2fadcbe36eeaf
+    ) # tx_hash: 0xa580c0c5a0b8e731f7b7fe8ea3ee41cf0dbe78b352b55ae090160659e2d7410c
     path = "m/44'/0'/0'/0/0"
     result = client.sign_withdraw(data, path, navigator,
                                  instructions=withdrawal_instruction_approve(firmware),
                                  testname=test_name)
-    assert result == "IEZDsLh2JweulEOzl2dgLrYvtIqWUW8gFeYdMLAYSk7PeH72uN0JQJGVCYZSpJ5HYRaKZrmSBiG3Ypl+oelXEAM="
+    assert result == "Hy2UpLBXRUkHBRfXIEYFB8PEteLtjxrqJ7kJ3Qe+i67wP0bzDkFl5Z4bYBFfT/3+xwgPrw3T0rkq6dv53Cff+p0="
 
 def test_sign_withdraw_wrong_address(navigator: Navigator, firmware: Firmware, client: RaggerClient, test_name: str):
     data = AcreWithdrawalData(
