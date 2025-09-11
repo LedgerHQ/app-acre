@@ -45,9 +45,9 @@ PATH_APP_LOAD_PARAMS = ""
 
 
 # Application version
-APPVERSION_M = 1
-APPVERSION_N = 1
-APPVERSION_P = 6
+APPVERSION_M = 2
+APPVERSION_N = 0
+APPVERSION_P = 0
 APPVERSION_SUFFIX = # if not empty, appended at the end. Do not add a dash.
 
 ifeq ($(APPVERSION_SUFFIX),)
