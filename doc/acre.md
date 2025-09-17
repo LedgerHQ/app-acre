@@ -337,7 +337,7 @@ This section documents the commands that the Hardware Wallet can request to the 
 
 Signs a Withdrawal message. The message being signed is the hash of the Acre Withdrawal transaction.
 
-The device shows on its secure screen the value of stBTC being withdrawn and the address derived from the output script present in the transaction.
+The device shows on its secure screen the value of acreBTC being withdrawn and the address derived from the output script present in the transaction.
 
 If the address derived from the output scipt does not match with the one derived from the derivation path, the application returns the status word `SW_INCORECT_DATA`.
 

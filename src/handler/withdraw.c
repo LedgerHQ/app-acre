@@ -186,7 +186,7 @@ static bool display_data_content_and_confirm(dispatcher_context_t* dc,
     // Concat the COIN_COINID_SHORT to the value
     // AMOUNT_SIZE_IN_CHARS + ' ' + MAX_TICKER_LEN + '\0'
     char value_with_ticker[AMOUNT_SIZE_IN_CHARS + 1 + MAX_TICKER_LEN + 1];
-    snprintf(value_with_ticker, sizeof(value_with_ticker), "stBTC %s", value);
+    snprintf(value_with_ticker, sizeof(value_with_ticker), "acreBTC %s", value);
 
     // Trim the value of trailing zeros in a char of size of value
     int value_with_ticker_len = sizeof(value_with_ticker) - 1;
