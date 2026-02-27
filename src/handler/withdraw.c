@@ -588,17 +588,17 @@ void compute_domain_separator_hash(dispatcher_context_t* dc,
 void compute_tx_hash(dispatcher_context_t* dc,
                      uint8_t* data_merkle_root,
                      size_t n_chunks,
-                     u_int8_t output_buffer[KECCAK_256_HASH_SIZE]) {
+                     uint8_t output_buffer[KECCAK_256_HASH_SIZE]) {
     cx_sha3_t hash_context;
 
     // Initialize the SHA-3 context for Keccak-256 (256-bit output)
     CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));
-    u_int8_t keccak_of_tx_data[KECCAK_256_HASH_SIZE];
+    uint8_t keccak_of_tx_data[KECCAK_256_HASH_SIZE];
     // Compute keccak256 hash of the tx_data_data
     fetch_and_hash_tx_data(dc, data_merkle_root, n_chunks, &hash_context, keccak_of_tx_data);
 
     // Fetch and ABI-encode the tx fields
-    u_int8_t abi_encoded_tx_fields[FIELD_SIZE * 11];
+    uint8_t abi_encoded_tx_fields[FIELD_SIZE * 11];
     if (!fetch_and_abi_encode_tx_fields(dc,
                                         data_merkle_root,
                                         n_chunks,
@@ -609,7 +609,7 @@ void compute_tx_hash(dispatcher_context_t* dc,
     }
 
     // Hash the abi_encoded_tx_fields
-    u_int8_t keccak_of_abi_encoded_tx_fields[KECCAK_256_HASH_SIZE];
+    uint8_t keccak_of_abi_encoded_tx_fields[KECCAK_256_HASH_SIZE];
     CX_THROW(cx_keccak_init_no_throw(&hash_context, 256));
     CX_THROW(cx_hash_no_throw((cx_hash_t*) &hash_context,
                               CX_LAST,
@@ -622,7 +622,7 @@ void compute_tx_hash(dispatcher_context_t* dc,
     compute_domain_separator_hash(dc, data_merkle_root, n_chunks, domain_separator_hash);
     // Abi.encodePacked
     // 2 bytes (0x1901) + 2 keccak256 hashes
-    u_int8_t abi_encode_packed[2 + (KECCAK_256_HASH_SIZE * 2)] = {0x19, 0x01};
+    uint8_t abi_encode_packed[2 + (KECCAK_256_HASH_SIZE * 2)] = {0x19, 0x01};
     // Add the domain_separator_hash to the abi_encode_packed
     memcpy(abi_encode_packed + 2, domain_separator_hash, KECCAK_256_HASH_SIZE);
     // Add the keccak_of_tx_data to the abi_encode_packed
