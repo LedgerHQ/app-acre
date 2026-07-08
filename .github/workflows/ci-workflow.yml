@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/ledgerhq/app-bitcoin-new/speculos-bitcoin:latest
+      image: ghcr.io/ledgerhq/app-bitcoin/speculos-bitcoin:latest
       ports:
         - 1234:1234
         - 9999:9999
