@@ -1,5 +1,7 @@
 # Ledger Acre Application
 
+Acre Ledger App © 2024 by Acre is licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+
 ## Prerequisite
 
 Be sure to have your environment correctly set up (see [Getting Started](https://developers.ledger.com/docs/nano-app/introduction/)) and [ledgerblue](https://pypi.org/project/ledgerblue/) installed.
